@@ -5,6 +5,7 @@ Logging package for go
 
 ###Mock Logger
 
+
   mockLogger := NewMockLogger()
   mockLogger.Info("Stuff has just happened here")
   mockLogger.Info("MORE Stuff has just happened here!!")
