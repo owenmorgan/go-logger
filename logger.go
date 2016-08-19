@@ -1,8 +1,7 @@
 package logger
 
 import (
-	"encoding/json"
-	"log"
+	"fmt"
 	"os"
 	"time"
 
@@ -197,12 +196,8 @@ func (esl *ElasticSearchLogger) Debug(message string) {
 
 // entry point for Elasticsearch
 func (esl *ElasticSearchLogger) log(lm logMessage) {
-	logJSON, err := json.Marshal(lm)
+	_, err := esl.Client.Index().Index(esl.Index).Type(lm.Level).BodyJson(lm).Refresh(true).Do()
 	if err != nil {
-		panic(err)
-	}
-	_, err = esl.Client.Index().Index(esl.Index).Type(lm.Level).BodyJson(logJSON).Refresh(true).Do()
-	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err.Error())
 	}
 }
