@@ -180,7 +180,7 @@ func (esl *ElasticSearchLogger) Notice(message string) {
 
 // Info - Interesting events.
 func (esl *ElasticSearchLogger) Info(message string) {
-	fmt.Println(msg)
+	fmt.Println(message)
 	logMessage := getBaseLogMessage()
 	logMessage.Level = "Info"
 	logMessage.Message = message
@@ -189,7 +189,7 @@ func (esl *ElasticSearchLogger) Info(message string) {
 
 // Debug - Detailed debug information.
 func (esl *ElasticSearchLogger) Debug(message string) {
-	fmt.Println(msg)
+	fmt.Println(message)
 	logMessage := getBaseLogMessage()
 	logMessage.Level = "Debug"
 	logMessage.Message = message
