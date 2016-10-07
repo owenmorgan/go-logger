@@ -188,6 +188,7 @@ func (esl *ElasticSearchLogger) Info(message string) {
 
 // Debug - Detailed debug information.
 func (esl *ElasticSearchLogger) Debug(message string) {
+	fmt.Println(msg)
 	logMessage := getBaseLogMessage()
 	logMessage.Level = "Debug"
 	logMessage.Message = message
