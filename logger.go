@@ -123,7 +123,10 @@ func (mck *MockLogger) log(lm logMessage) {
 
 // NewElasticSearchLogger - Create a new instance of an Elasticsearch logger
 func NewElasticSearchLogger(host string, index string) *ElasticSearchLogger {
-	client, err := elastic.NewClient(elastic.SetURL(host))
+	client, err := elastic.NewClient(
+		elastic.SetSniff(false),
+		elastic.SetURL(host),
+	)
 	if err != nil {
 		panic(err)
 	}
