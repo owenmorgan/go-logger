@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -28,6 +30,75 @@ type logMessage struct {
 	Host      string `json:"host"`
 }
 
+func (lm logMessage) String() string {
+	body, _ := json.Marshal(lm)
+	return string(body)
+}
+
+// Transport defines a transport for shipping logs.
+type Transport interface {
+	Ship(msg logMessage) error
+}
+
+// Log formats log messages and sends them on to a transport.
+type Log struct {
+	t Transport
+}
+
+// NewLog returns a pointer to a new Log, with the given transport.
+func NewLog(t Transport) *Log {
+	return &Log{
+		t: t,
+	}
+}
+
+func (l *Log) log(msg string, lvl string) {
+	logMessage := getBaseLogMessage()
+	logMessage.Level = lvl
+	logMessage.Message = msg
+	l.t.Ship(logMessage)
+}
+
+// Emergency - System is unusable..
+func (l *Log) Emergency(message string) {
+	l.log(message, "Emergency")
+}
+
+// Alert - Action must be taken immediately.
+func (l *Log) Alert(message string) {
+	l.log(message, "Alert")
+}
+
+// Critical - Critical conditions.
+func (l *Log) Critical(message string) {
+	l.log(message, "Critical")
+}
+
+// Error - Runtime errors that do not require immediate action but should typically be logged and monitored
+func (l *Log) Error(message string) {
+	l.log(message, "Error")
+}
+
+// Warning - Exceptional occurrences that are not errors.
+func (l *Log) Warning(message string) {
+	l.log(message, "Warning")
+}
+
+// Notice - Normal but significant events.
+func (l *Log) Notice(message string) {
+	l.log(message, "Notice")
+}
+
+// Info - Interesting events.
+func (l *Log) Info(message string) {
+	l.log(message, "Info")
+}
+
+// Debug - Detailed debug information.
+func (l *Log) Debug(message string) {
+	l.log(message, "Debug")
+}
+
 func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
@@ -37,92 +108,38 @@ func getBaseLogMessage() logMessage {
 	return logMessage{Timestamp: makeTimestamp(), Host: host}
 }
 
-// MockLogger - MockLogger is a mock version of Logger
-type MockLogger struct {
+// MockTransport is a mock version of Logger
+type MockTransport struct {
 	Logs map[int]logMessage
 }
 
-// ElasticSearchLogger - Elasticsearch type of Logger
-type ElasticSearchLogger struct {
-	Client elastic.Client
-	Index  string
+// NewMockTransport returns a new MockTransport
+func NewMockTransport() *MockTransport {
+	return &MockTransport{
+		Logs: make(map[int]logMessage),
+	}
+}
+
+// Ship implements Transport.
+func (mck *MockTransport) Ship(lm logMessage) error {
+	mck.Logs[len(mck.Logs)+1] = lm
+	return nil
 }
 
 // NewMockLogger - Create new mock instance of logger
-func NewMockLogger() *MockLogger {
-	return &MockLogger{make(map[int]logMessage)}
+func NewMockLogger() *Log {
+	return NewLog(NewMockTransport())
 }
 
-// Emergency - System is unusable..
-func (mck *MockLogger) Emergency(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Emergency"
-	logMessage.Message = message
-	mck.log(logMessage)
+// ElasticsearchTransport ships logs to ElasticSearch
+type ElasticsearchTransport struct {
+	Client *elastic.Client
+	Index  string
 }
 
-// Alert - Action must be taken immediately.
-func (mck *MockLogger) Alert(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Alert"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Critical - Critical conditions.
-func (mck *MockLogger) Critical(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Critical"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Error - Runtime errors that do not require immediate action but should typically be logged and monitored
-func (mck *MockLogger) Error(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Error"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Warning - Exceptional occurrences that are not errors.
-func (mck *MockLogger) Warning(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Warning"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Notice - Normal but significant events.
-func (mck *MockLogger) Notice(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Notice"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Info - Interesting events.
-func (mck *MockLogger) Info(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Info"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-// Debug - Detailed debug information.
-func (mck *MockLogger) Debug(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Debug"
-	logMessage.Message = message
-	mck.log(logMessage)
-}
-
-func (mck *MockLogger) log(lm logMessage) {
-	mck.Logs[len(mck.Logs)+1] = lm
-}
-
-// NewElasticSearchLogger - Create a new instance of an Elasticsearch logger
-func NewElasticSearchLogger(host string, index string) *ElasticSearchLogger {
+// NewElasticSearchTransport returns a pointer to an ElasticsearchTransport.
+// TODO: Inject a client here, rather than instantiating one.
+func NewElasticSearchTransport(host string, index string) *ElasticsearchTransport {
 	client, err := elastic.NewClient(
 		elastic.SetSniff(false),
 		elastic.SetURL(host),
@@ -130,79 +147,25 @@ func NewElasticSearchLogger(host string, index string) *ElasticSearchLogger {
 	if err != nil {
 		panic(err)
 	}
-	return &ElasticSearchLogger{Client: *client, Index: index}
+	return &ElasticsearchTransport{Client: client, Index: index}
 }
 
-// Emergency - System is unusable..
-func (esl *ElasticSearchLogger) Emergency(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Emergency"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Alert - Action must be taken immediately.
-func (esl *ElasticSearchLogger) Alert(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Alert"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Critical - Critical conditions.
-func (esl *ElasticSearchLogger) Critical(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Critical"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Error - Runtime errors that do not require immediate action but should typically be logged and monitored
-func (esl *ElasticSearchLogger) Error(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Error"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Warning - Exceptional occurrences that are not errors.
-func (esl *ElasticSearchLogger) Warning(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Warning"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Notice - Normal but significant events.
-func (esl *ElasticSearchLogger) Notice(message string) {
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Notice"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Info - Interesting events.
-func (esl *ElasticSearchLogger) Info(message string) {
-	fmt.Println(message)
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Info"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// Debug - Detailed debug information.
-func (esl *ElasticSearchLogger) Debug(message string) {
-	fmt.Println(message)
-	logMessage := getBaseLogMessage()
-	logMessage.Level = "Debug"
-	logMessage.Message = message
-	esl.log(logMessage)
-}
-
-// entry point for Elasticsearch
-func (esl *ElasticSearchLogger) log(lm logMessage) {
+// Ship ships a logMessage to ElasticSearch.
+func (esl *ElasticsearchTransport) Ship(lm logMessage) error {
 	_, err := esl.Client.Index().Index(esl.Index).Type(lm.Level).BodyJson(lm).Refresh(true).Do()
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+	return nil
+}
+
+// WriterTransport allows an io.Writer to be used as a transport.
+type WriterTransport struct {
+	w io.Writer
+}
+
+// Ship implements Transport.
+func (t WriterTransport) Ship(lm logMessage) error {
+	t.w.Write(([]byte)(lm.String()))
+	return nil
 }
