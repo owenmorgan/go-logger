@@ -161,11 +161,11 @@ func (esl *ElasticsearchTransport) Ship(lm logMessage) error {
 
 // WriterTransport allows an io.Writer to be used as a transport.
 type WriterTransport struct {
-	w io.Writer
+	W io.Writer
 }
 
 // Ship implements Transport.
 func (t WriterTransport) Ship(lm logMessage) error {
-	t.w.Write(([]byte)(lm.String()))
+	t.W.Write(([]byte)(lm.String()))
 	return nil
 }

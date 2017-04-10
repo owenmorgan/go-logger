@@ -21,7 +21,7 @@ func TestCreateAndLogToMockLogger(t *testing.T) {
 
 func TestStdOut(t *testing.T) {
 	var buf bytes.Buffer
-	out := WriterTransport{w: &buf}
+	out := WriterTransport{W: &buf}
 	mockLog := NewLog(out)
 	mockLog.Info("WriterMessage")
 
