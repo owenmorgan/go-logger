@@ -10,6 +10,8 @@ import (
 	elastic "gopkg.in/olivere/elastic.v3"
 )
 
+var context string
+
 // Logger interface
 type Logger interface {
 	Emergency(message string)
@@ -20,6 +22,7 @@ type Logger interface {
 	Notice(message string)
 	Info(message string)
 	Debug(message string)
+	SetContext(context string)
 	log(lm logMessage)
 }
 
@@ -28,6 +31,7 @@ type logMessage struct {
 	Message   string `json:"message"`
 	Timestamp int64  `json:"timestamp"`
 	Host      string `json:"host"`
+	Context   string `json:"context"`
 }
 
 func (lm logMessage) String() string {
@@ -56,7 +60,13 @@ func (l *Log) log(msg string, lvl string) {
 	logMessage := getBaseLogMessage()
 	logMessage.Level = lvl
 	logMessage.Message = msg
+	logMessage.Context = context
 	l.t.Ship(logMessage)
+}
+
+// SetContext - i.e app name
+func (l *Log) SetContext(cntx string) {
+	context = cntx
 }
 
 // Emergency - System is unusable..
@@ -105,7 +115,7 @@ func makeTimestamp() int64 {
 
 func getBaseLogMessage() logMessage {
 	host, _ := os.Hostname()
-	return logMessage{Timestamp: makeTimestamp(), Host: host}
+	return logMessage{Timestamp: makeTimestamp(), Host: host, Context: context}
 }
 
 // MockTransport is a mock version of Logger
