@@ -166,6 +166,6 @@ type WriterTransport struct {
 
 // Ship implements Transport.
 func (t WriterTransport) Ship(lm logMessage) error {
-	t.W.Write(([]byte)(lm.String()))
+	t.W.Write(([]byte)(lm.String() + "\n"))
 	return nil
 }
